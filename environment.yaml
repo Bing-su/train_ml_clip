@@ -14,9 +14,13 @@ dependencies:
   - pandas
   - rich
   - openpyxl
+  - scikit-learn
 
   - black
   - flake8
   - flake8-bugbear
   - mypy
   - pre-commit
+
+  - pip:
+      - pytorch_optimizer
