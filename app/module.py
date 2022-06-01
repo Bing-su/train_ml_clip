@@ -25,6 +25,7 @@ class KoCLIPModule(pl.LightningModule):
         self.text_model_name = text_model_name
         self.clip, self.model = self.init_model(clip_model_name, text_model_name)
         self.mse = torch.nn.MSELoss()
+        self.learning_rate = learning_rate
 
     def init_model(
         self, clip_model_name: str, text_model_name: str
