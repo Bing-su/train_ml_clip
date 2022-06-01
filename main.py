@@ -1,11 +1,10 @@
 import pytorch_lightning as pl
-from typer import Typer, Option
+from pytorch_lightning.callbacks import EarlyStopping, RichProgressBar
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks import EarlyStopping, RichProgressBar, ModelCheckpoint
+from typer import Option, Typer
 
 from app.dataset import KoCLIPDataModule
 from app.module import KoCLIPModule
-
 
 cmd = Typer()
 
@@ -19,7 +18,7 @@ def train(
         "lassl/bert-ko-small", "-t", "--text", help="name of text model"
     ),
     learning_rate: float = Option(1e-3, "--lr", help="learning rate"),
-    batch_size: int = Option(32, "-b", "--batch_size", min=1, help="batch_size"),
+    batch_size: int = Option(64, "-b", "--batch_size", min=1, help="batch_size"),
     patience: int = Option(
         3, min=0, help="earlystopping patience, if 0, deactivate early stopping"
     ),
@@ -28,15 +27,12 @@ def train(
     ),
     auto_lr_find: bool = Option(False, help="auto find learning_rate"),
     test: bool = Option(False, help="do test run"),
+    save_path: str = Option("save/my_model", help="save path of trained model"),
 ):
     datamodule = KoCLIPDataModule(clip_model_name, text_model_name, batch_size)
     module = KoCLIPModule(clip_model_name, text_model_name, learning_rate)
 
-    checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss", mode="min", every_n_train_steps=1000
-    )
-
-    callbacks = [checkpoint_callback, RichProgressBar(leave=True)]
+    callbacks = [RichProgressBar(leave=True)]
 
     if patience:
         early_stop = EarlyStopping("val_loss", patience=patience)
