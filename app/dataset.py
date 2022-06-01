@@ -1,9 +1,8 @@
 import pandas as pd
 import pytorch_lightning as pl
-from torch.utils.data import Dataset, DataLoader
-
-from transformers import PreTrainedTokenizerBase, AutoTokenizer
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Dataset
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 
 class KoCLIPDataset(Dataset):
@@ -55,7 +54,10 @@ class KoCLIPDataCollator:
 
 class KoCLIPDataModule(pl.LightningDataModule):
     def __init__(
-        self, en_tokenizer_name: str, ko_tokenizer_name: str, batch_size: int = 32
+        self,
+        en_tokenizer_name: str,
+        ko_tokenizer_name: str,
+        batch_size: int = 32,
     ):
         super().__init__()
         self.en_tokenizer_name = en_tokenizer_name
