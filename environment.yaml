@@ -15,6 +15,8 @@ dependencies:
   - rich
   - openpyxl
   - scikit-learn
+  - typer
+  - wandb
 
   - black
   - flake8
