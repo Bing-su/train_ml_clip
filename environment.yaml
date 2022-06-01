@@ -1,0 +1,22 @@
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+
+  - pytorch
+  - torchvision
+  - transformers
+  - pytorch-lightning
+
+  - pandas
+  - rich
+  - openpyxl
+
+  - black
+  - flake8
+  - flake8-bugbear
+  - mypy
+  - pre-commit
