@@ -56,7 +56,7 @@ def train(
         datamodule=datamodule,
     )
 
-    module.save()
+    module.save(save_path)
 
 
 if __name__ == "__main__":
