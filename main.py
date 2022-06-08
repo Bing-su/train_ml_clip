@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping, RichProgressBar
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import WandbLogger
 from typer import Option, Typer
 
@@ -32,7 +32,8 @@ def train(
     datamodule = KoCLIPDataModule(clip_model_name, text_model_name, batch_size)
     module = KoCLIPModule(clip_model_name, text_model_name, learning_rate)
 
-    callbacks = [RichProgressBar(leave=True)]
+    checkpoints = ModelCheckpoint(monitor="val_loss")
+    callbacks = [checkpoints, RichProgressBar(leave=True)]
 
     if patience:
         early_stop = EarlyStopping("val_loss", patience=patience)
@@ -50,7 +51,10 @@ def train(
         auto_lr_find=auto_lr_find,
     )
 
-    trainer.fit(module, datamodule=datamodule)
+    trainer.fit(
+        module,
+        datamodule=datamodule,
+    )
 
     module.save()
 

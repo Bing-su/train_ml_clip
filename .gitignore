@@ -129,5 +129,6 @@ dmypy.json
 .pyre/
 
 data/*
-wandb
-save
+wandb/
+save/
+KoCLIP_training_code/

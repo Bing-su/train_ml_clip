@@ -79,6 +79,7 @@ class KoCLIPDataModule(pl.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             collate_fn=self.data_collator,
+            num_workers=8,
             pin_memory=True,
             shuffle=True,
         )
@@ -88,6 +89,7 @@ class KoCLIPDataModule(pl.LightningDataModule):
             self.val_dataset,
             batch_size=self.batch_size,
             collate_fn=self.data_collator,
+            num_workers=8,
             pin_memory=True,
         )
 

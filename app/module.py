@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import pytorch_lightning as pl
 import torch
 from pytorch_optimizer import MADGRAD
@@ -29,7 +27,7 @@ class KoCLIPModule(pl.LightningModule):
 
     def init_model(
         self, clip_model_name: str, text_model_name: str
-    ) -> Tuple[CLIPModel, VisionTextDualEncoderModel]:
+    ) -> tuple[CLIPModel, VisionTextDualEncoderModel]:
         clip = CLIPModel.from_pretrained(clip_model_name)
         model = VisionTextDualEncoderModel.from_vision_text_pretrained(
             clip_model_name, text_model_name
@@ -63,11 +61,15 @@ class KoCLIPModule(pl.LightningModule):
         en_ko_emb = self.model.get_text_features(**en_ko_batch)
         en_en_emb = self.clip.get_text_features(**en_en_batch)
 
-        loss1 = self.mse(ko_emb, en_en_emb)
-        loss2 = self.mse(en_ko_emb, en_en_emb)
-        loss = loss1 + loss2
+        ko_en_loss = self.mse(ko_emb, en_en_emb)
+        en_en_loss = self.mse(en_ko_emb, en_en_emb)
+        loss = ko_en_loss + en_en_loss
 
-        self.log("train_loss", loss, prog_bar=True)
+        self.log_dict(
+            {"train_loss": loss, "ko_loss": ko_en_loss, "en_loss": en_en_loss},
+            prog_bar=True,
+            on_step=True,
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -77,11 +79,16 @@ class KoCLIPModule(pl.LightningModule):
         en_ko_emb = self.model.get_text_features(**en_ko_batch)
         en_en_emb = self.clip.get_text_features(**en_en_batch)
 
-        loss1 = self.mse(ko_emb, en_en_emb)
-        loss2 = self.mse(en_ko_emb, en_en_emb)
-        loss = loss1 + loss2
+        ko_en_loss = self.mse(ko_emb, en_en_emb)
+        en_en_loss = self.mse(en_ko_emb, en_en_emb)
+        loss = ko_en_loss + en_en_loss
 
-        self.log("val_loss", loss, prog_bar=True)
+        self.log_dict(
+            {"val_loss": loss, "ko_loss": ko_en_loss, "en_loss": en_en_loss},
+            on_step=True,
+            on_epoch=True,
+        )
+        return loss
 
     def save(self, save_dir: str = "save/my_model"):
         self.model.save_pretrained(save_dir)
