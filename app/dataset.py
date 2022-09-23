@@ -1,27 +1,35 @@
-import pandas as pd
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
 import pytorch_lightning as pl
-from sklearn.model_selection import train_test_split
+from datasets import Dataset as HFDataset
+from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
-from transformers import AutoTokenizer, PreTrainedTokenizerBase
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
+
+if TYPE_CHECKING:
+    from transformers import BatchEncoding
 
 
 class KoCLIPDataset(Dataset):
     def __init__(
         self,
-        df: pd.DataFrame,
-        en_tokenizer: PreTrainedTokenizerBase,
-        ko_tokenizer: PreTrainedTokenizerBase,
+        ds: HFDataset,
+        en_tokenizer: PreTrainedTokenizerFast,
+        ko_tokenizer: PreTrainedTokenizerFast,
     ):
-        self.df = df.reset_index(drop=True)
+        self.ds = ds
         self.en_tokenizer = en_tokenizer
         self.ko_tokenizer = ko_tokenizer
 
     def __len__(self):
-        return len(self.df)
+        return len(self.ds)
 
-    def __getitem__(self, idx: int):
-        ko = self.df.loc[idx, "원문"]
-        en = self.df.loc[idx, "번역문"]
+    def __getitem__(
+        self, idx: int
+    ) -> tuple["BatchEncoding", "BatchEncoding", "BatchEncoding"]:
+        ko: str = self.ds[idx]["ko"]
+        en: str = self.ds[idx]["en"]
 
         ko_token = self.ko_tokenizer(ko, truncation=True)
         en_ko_token = self.ko_tokenizer(en, truncation=True)
@@ -33,13 +41,16 @@ class KoCLIPDataset(Dataset):
 class KoCLIPDataCollator:
     def __init__(
         self,
-        en_tokenizer: PreTrainedTokenizerBase,
-        ko_tokenizer: PreTrainedTokenizerBase,
+        en_tokenizer: PreTrainedTokenizerFast,
+        ko_tokenizer: PreTrainedTokenizerFast,
     ):
         self.en_tokenizer = en_tokenizer
         self.ko_tokenizer = ko_tokenizer
 
-    def __call__(self, features):
+    def __call__(
+        self,
+        features: Sequence[tuple["BatchEncoding", "BatchEncoding", "BatchEncoding"]],
+    ):
         ko_token, en_ko_token, en_en_token = zip(*features)
         ko_batch = self.ko_tokenizer.pad(ko_token, padding=True, return_tensors="pt")
         en_ko_batch = self.ko_tokenizer.pad(
@@ -58,49 +69,55 @@ class KoCLIPDataModule(pl.LightningDataModule):
         en_tokenizer_name: str,
         ko_tokenizer_name: str,
         batch_size: int = 32,
+        num_workers: int = 8,
     ):
         super().__init__()
         self.en_tokenizer_name = en_tokenizer_name
         self.ko_tokenizer_name = ko_tokenizer_name
         self.batch_size = batch_size
+        self.num_workers = num_workers
+
+    def prepare_data(self):
+        load_dataset(
+            "Bingsu/aihub_ko-en_parallel_corpus_collection",
+            split="train+validation",
+            use_auth_token=True,
+        )
 
     def setup(self, stage=None):
-        df = pd.read_csv("data/data.tsv", sep="\t")
+        ds: HFDataset = load_dataset(
+            "Bingsu/aihub_ko-en_parallel_corpus_collection",
+            split="train+validation",
+            use_auth_token=True,
+        )
         en_tokenizer = AutoTokenizer.from_pretrained(self.en_tokenizer_name)
         ko_tokenizer = AutoTokenizer.from_pretrained(self.ko_tokenizer_name)
         self.data_collator = KoCLIPDataCollator(en_tokenizer, ko_tokenizer)
 
-        train_df, val_df = train_test_split(df, test_size=0.05, random_state=42)
-        self.train_dataset = KoCLIPDataset(train_df, en_tokenizer, ko_tokenizer)
-        self.val_dataset = KoCLIPDataset(val_df, en_tokenizer, ko_tokenizer)
+        self.train_dataset = KoCLIPDataset(ds, en_tokenizer, ko_tokenizer)
 
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
             collate_fn=self.data_collator,
-            num_workers=8,
+            num_workers=self.num_workers,
             pin_memory=True,
             shuffle=True,
         )
 
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            collate_fn=self.data_collator,
-            num_workers=8,
-            pin_memory=True,
-        )
-
 
 if __name__ == "__main__":
-    df = pd.read_csv("data/data.tsv", sep="\t")
+    ds = load_dataset(
+        "Bingsu/aihub_ko-en_parallel_corpus_collection",
+        split="train+validation",
+        use_auth_token=True,
+    )
 
     en_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
-    ko_tokenizer = AutoTokenizer.from_pretrained("klue/roberta-small")
+    ko_tokenizer = AutoTokenizer.from_pretrained("lassl/roberta-ko-small")
 
-    dataset = KoCLIPDataset(df, en_tokenizer, ko_tokenizer)
+    dataset = KoCLIPDataset(ds, en_tokenizer, ko_tokenizer)
 
     collate_fn = KoCLIPDataCollator(en_tokenizer, ko_tokenizer)
     loader = DataLoader(dataset, batch_size=1, collate_fn=collate_fn)
