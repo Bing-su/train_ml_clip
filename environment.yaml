@@ -6,17 +6,19 @@ dependencies:
   - python=3.9
   - pip
 
-  - pytorch
+  - pytorch>=1.12.1
   - torchvision
-  - transformers
   - pytorch-lightning
+  - transformers
+  - datasets>=2.0.0
 
   - pandas
-  - rich
-  - openpyxl
   - scikit-learn
+
+  - rich
   - typer
   - wandb
+  - loguru
 
   - black
   - flake8
