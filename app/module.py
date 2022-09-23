@@ -3,6 +3,7 @@ from typing import Literal
 
 import pytorch_lightning as pl
 import torch
+from loguru import logger
 from transformers import (
     AutoFeatureExtractor,
     AutoTokenizer,
@@ -90,6 +91,22 @@ class KoCLIPModule(pl.LightningModule):
             optimizer_grouped_parameters,
             lr=self.learning_rate,
         )
+
+        if "bnb" in self.optimizer:
+            from bitsandbytes.optim import GlobalOptimManager
+
+            manager = GlobalOptimManager.get_instance()
+            modules = chain(
+                self.student.text_model.modules(),
+                self.student.text_projection.modules(),
+            )
+            for module in modules:
+                if isinstance(module, torch.nn.Embedding):
+                    manager.register_module_override(
+                        module, "weight", {"optim_bits": 32}
+                    )
+                    logger.debug(f"bitsandbytes: will optimize {module} in fp32")
+
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer, self.max_lr, total_steps=self.trainer.estimated_stepping_batches
         )
