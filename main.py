@@ -3,7 +3,11 @@ from typing import Optional
 
 import pytorch_lightning as pl
 from loguru import logger
-from pytorch_lightning.callbacks import ModelCheckpoint, RichProgressBar
+from pytorch_lightning.callbacks import (
+    LearningRateMonitor,
+    ModelCheckpoint,
+    RichProgressBar,
+)
 from pytorch_lightning.loggers import WandbLogger
 from typer import Option, Typer
 
@@ -80,6 +84,9 @@ def train(
     save_path: str = Option(
         "save/my_model", help="save path of trained model", rich_help_panel="train"
     ),
+    log_every_n_steps: int = Option(
+        100, help="log every n steps", rich_help_panel="train"
+    ),
     resume_from_checkpoint: Optional[str] = Option(
         None,
         help="Path/URL of the checkpoint from which training is resumed",
@@ -111,13 +118,15 @@ def train(
     )
 
     checkpoints = ModelCheckpoint(monitor="train/loss_epoch", save_last=True)
-    callbacks = [checkpoints, RichProgressBar()]
+    callbacks = [checkpoints, RichProgressBar(), LearningRateMonitor("step")]
 
     if seed is not None:
         pl.seed_everything(seed)
         logger.debug(f"set seed: {seed}")
 
     limit_train_batches = steps_per_epoch if steps_per_epoch else 1.0
+    if isinstance(limit_train_batches, int) and accumulate_grad_batches is not None:
+        limit_train_batches *= accumulate_grad_batches
 
     if not wandb_name:
         wandb_name = (
@@ -142,6 +151,7 @@ def train(
         limit_train_batches=limit_train_batches,
         callbacks=callbacks,
         auto_scale_batch_size=auto_scale_batch_size,
+        log_every_n_steps=log_every_n_steps,
     )
 
     if auto_scale_batch_size:
