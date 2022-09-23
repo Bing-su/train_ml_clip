@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Optional
 
 import pytorch_lightning as pl
+from loguru import logger
 from pytorch_lightning.callbacks import ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import WandbLogger
 from typer import Option, Typer
@@ -85,12 +86,14 @@ def train(
         None, help="wandb project name", rich_help_panel="train"
     ),
 ):
+    logger.debug("loading dataset")
     datamodule = KoCLIPDataModule(
         teacher_model_name,
         student_model_name,
         batch_size=batch_size,
         num_workers=num_workers,
     )
+    logger.debug("loading model")
     module = KoCLIPModule(
         teacher_model_name,
         student_model_name,
@@ -114,7 +117,9 @@ def train(
             + "-"
             + model_type
         )
+    logger.info(f"wandb name: {wandb_name}")
 
+    logger.debug("set trainer")
     trainer = pl.Trainer(
         logger=WandbLogger(name=wandb_name, project="koclip"),
         fast_dev_run=fast_dev_run,
@@ -130,11 +135,15 @@ def train(
     )
 
     if auto_scale_batch_size:
+        logger.debug("auto scale batch size")
         trainer.tune(module, datamodule=datamodule)
 
+    logger.debug("start training")
     trainer.fit(module, datamodule=datamodule, ckpt_path=resume_from_checkpoint)
+    logger.debug("training finished")
 
     module.save(save_path)
+    logger.info(f"model saved at: {save_path}")
 
 
 if __name__ == "__main__":
