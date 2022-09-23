@@ -19,6 +19,7 @@ dependencies:
   - typer
   - wandb
   - loguru
+  - zstandard
 
   - black
   - flake8
