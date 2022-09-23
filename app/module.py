@@ -25,6 +25,7 @@ class KoCLIPModule(pl.LightningModule):
         learning_rate: float = 5e-4,
         max_lr: float = 1e-3,
         weight_decay: float = 1e-4,
+        use_auth_token: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -33,6 +34,7 @@ class KoCLIPModule(pl.LightningModule):
         self.teacher_model_name = teacher_model_name
         self.student_model_name = student_model_name
         self.model_type = model_type
+        self.use_auth_token = use_auth_token
         self.teacher, self.student = self.init_model(
             teacher_model_name, student_model_name
         )
@@ -44,10 +46,14 @@ class KoCLIPModule(pl.LightningModule):
         self.weight_decay = weight_decay
 
     def init_model(self, teacher_model_name: str, student_model_name: str):
-        teacher = CLIPModel.from_pretrained(teacher_model_name)
+        teacher = CLIPModel.from_pretrained(
+            teacher_model_name, use_auth_token=self.use_auth_token
+        )
 
         if self.model_type == "clip":
-            student = CLIPModel.from_pretrained(student_model_name)
+            student = CLIPModel.from_pretrained(
+                student_model_name, use_auth_token=self.use_auth_token
+            )
         else:
             student = VisionTextDualEncoderModel.from_vision_text_pretrained(
                 teacher_model_name, student_model_name
@@ -133,13 +139,17 @@ class KoCLIPModule(pl.LightningModule):
     def save(self, save_dir: str = "save/my_model"):
         self.student.save_pretrained(save_dir)
 
-        tokenizer = AutoTokenizer.from_pretrained(self.student_model_name)
+        tokenizer = AutoTokenizer.from_pretrained(
+            self.student_model_name, use_auth_token=self.use_auth_token
+        )
 
         if self.model_type == "clip":
-            processor = CLIPProcessor.from_pretrained(self.student_model_name)
+            processor = CLIPProcessor.from_pretrained(
+                self.student_model_name, use_auth_token=self.use_auth_token
+            )
         else:
             feature_extractor = AutoFeatureExtractor.from_pretrained(
-                self.teacher_model_name
+                self.teacher_model_name, use_auth_token=self.use_auth_token
             )
             processor = VisionTextDualEncoderProcessor(feature_extractor, tokenizer)
         processor.save_pretrained(save_dir)

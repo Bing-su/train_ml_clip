@@ -10,7 +10,7 @@ from typer import Option, Typer
 from app.dataset import KoCLIPDataModule
 from app.module import KoCLIPModule
 
-cmd = Typer()
+cmd = Typer(pretty_exceptions_show_locals=False)
 
 
 class ModelTypeEnum(str, Enum):
@@ -33,6 +33,9 @@ def train(
         "--student",
         help="name of student model",
         rich_help_panel="model",
+    ),
+    use_auth_token: bool = Option(
+        False, help="use auth token", rich_help_panel="model"
     ),
     model_type: ModelTypeEnum = Option(
         "dual_encoder", "-m", "--model-type", help="model type", rich_help_panel="model"
@@ -85,6 +88,7 @@ def train(
     wandb_name: Optional[str] = Option(
         None, help="wandb project name", rich_help_panel="train"
     ),
+    seed: Optional[int] = Option(None, help="seed", rich_help_panel="train"),
 ):
     logger.debug("loading dataset")
     datamodule = KoCLIPDataModule(
@@ -92,6 +96,7 @@ def train(
         student_model_name,
         batch_size=batch_size,
         num_workers=num_workers,
+        use_auth_token=use_auth_token,
     )
     logger.debug("loading model")
     module = KoCLIPModule(
@@ -102,10 +107,15 @@ def train(
         learning_rate=learning_rate,
         max_lr=max_lr,
         weight_decay=weight_decay,
+        use_auth_token=use_auth_token,
     )
 
     checkpoints = ModelCheckpoint(monitor="train/loss_epoch", save_last=True)
     callbacks = [checkpoints, RichProgressBar()]
+
+    if seed is not None:
+        pl.seed_everything(seed)
+        logger.debug(f"set seed: {seed}")
 
     limit_train_batches = steps_per_epoch if steps_per_epoch else 1.0
 

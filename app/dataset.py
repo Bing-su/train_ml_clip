@@ -70,28 +70,34 @@ class KoCLIPDataModule(pl.LightningDataModule):
         ko_tokenizer_name: str,
         batch_size: int = 32,
         num_workers: int = 8,
+        use_auth_token: bool = False,
     ):
         super().__init__()
         self.en_tokenizer_name = en_tokenizer_name
         self.ko_tokenizer_name = ko_tokenizer_name
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.use_auth_token = use_auth_token
 
     def prepare_data(self):
         load_dataset(
             "Bingsu/aihub_ko-en_parallel_corpus_collection",
             split="train+validation",
-            use_auth_token=True,
+            use_auth_token=self.use_auth_token,
         )
 
     def setup(self, stage=None):
         ds: HFDataset = load_dataset(
             "Bingsu/aihub_ko-en_parallel_corpus_collection",
             split="train+validation",
-            use_auth_token=True,
+            use_auth_token=self.use_auth_token,
         )
-        en_tokenizer = AutoTokenizer.from_pretrained(self.en_tokenizer_name)
-        ko_tokenizer = AutoTokenizer.from_pretrained(self.ko_tokenizer_name)
+        en_tokenizer = AutoTokenizer.from_pretrained(
+            self.en_tokenizer_name, use_auth_token=self.use_auth_token
+        )
+        ko_tokenizer = AutoTokenizer.from_pretrained(
+            self.ko_tokenizer_name, use_auth_token=self.use_auth_token
+        )
         self.data_collator = KoCLIPDataCollator(en_tokenizer, ko_tokenizer)
 
         self.train_dataset = KoCLIPDataset(ds, en_tokenizer, ko_tokenizer)
