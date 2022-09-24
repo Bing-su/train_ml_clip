@@ -132,3 +132,4 @@ data/*
 wandb/
 save/
 KoCLIP_training_code/
+koclip/
