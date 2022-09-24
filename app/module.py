@@ -24,7 +24,6 @@ class KoCLIPModule(pl.LightningModule):
         model_type: Literal["clip", "dual_encoder"] = "dual_encoder",
         optimizer: str = "adamw",
         learning_rate: float = 5e-4,
-        max_lr: float = 1e-3,
         weight_decay: float = 1e-4,
         use_auth_token: bool = False,
     ):
@@ -43,7 +42,6 @@ class KoCLIPModule(pl.LightningModule):
         self.mse = torch.nn.MSELoss()
         self.optimizer = optimizer
         self.learning_rate = learning_rate
-        self.max_lr = max_lr
         self.weight_decay = weight_decay
 
     def init_model(self, teacher_model_name: str, student_model_name: str):
@@ -89,7 +87,7 @@ class KoCLIPModule(pl.LightningModule):
         opt_class = create_optimizer(self.optimizer)
         optimizer = opt_class(
             optimizer_grouped_parameters,
-            lr=self.learning_rate,
+            lr=5e-5,
         )
 
         if "bnb" in self.optimizer:
@@ -108,7 +106,9 @@ class KoCLIPModule(pl.LightningModule):
                     logger.debug(f"bitsandbytes: will optimize {module} in fp32")
 
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer, self.max_lr, total_steps=self.trainer.estimated_stepping_batches
+            optimizer,
+            self.learning_rate,
+            total_steps=self.trainer.estimated_stepping_batches,
         )
 
         scheduler_config = {"scheduler": scheduler, "interval": "step"}

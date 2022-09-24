@@ -50,12 +50,6 @@ def train(
     learning_rate: float = Option(
         5e-4, "--lr", help="learning rate", rich_help_panel="model"
     ),
-    max_lr: float = Option(
-        1e-3,
-        "--max-lr",
-        help="max learning rate of onecyclelr",
-        rich_help_panel="model",
-    ),
     weight_decay: float = Option(
         1e-4, "-wd", "--weight-decay", help="weight decay", rich_help_panel="model"
     ),
@@ -112,7 +106,6 @@ def train(
         model_type=model_type,
         optimizer=optimizer,
         learning_rate=learning_rate,
-        max_lr=max_lr,
         weight_decay=weight_decay,
         use_auth_token=use_auth_token,
     )
