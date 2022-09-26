@@ -65,12 +65,15 @@ class KoCLIPModule(pl.LightningModule):
         return teacher, student
 
     def configure_optimizers(self):
-        params = list(
-            chain(
-                self.student.text_model.named_parameters(),
-                self.student.text_projection.named_parameters(),
+        if self.model_type == "clip":
+            params = list(self.student.text_model.named_parameters())
+        else:
+            params = list(
+                chain(
+                    self.student.text_model.named_parameters(),
+                    self.student.text_projection.named_parameters(),
+                )
             )
-        )
 
         no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
@@ -114,44 +117,56 @@ class KoCLIPModule(pl.LightningModule):
         scheduler_config = {"scheduler": scheduler, "interval": "step"}
         return [optimizer], [scheduler_config]
 
-    def training_step(self, batch, batch_idx):
+    def step(self, batch):
         ko_batch, en_ko_batch, en_en_batch = batch
 
-        ko_emb = self.student.get_text_features(**ko_batch)
-        en_ko_emb = self.student.get_text_features(**en_ko_batch)
-        en_en_emb = self.teacher.get_text_features(**en_en_batch)
+        if self.model_type == "clip":
+            ko_emb = self.student.text_model(**ko_batch)[1]
+            en_ko_emb = self.student.text_model(**en_ko_batch)[1]
+            en_en_emb = self.teacher.text_model(**en_en_batch)[1]
+        else:
+            ko_emb = self.student.get_text_features(**ko_batch)
+            en_ko_emb = self.student.get_text_features(**en_ko_batch)
+            en_en_emb = self.teacher.get_text_features(**en_en_batch)
 
         ko_en_loss = self.mse(ko_emb, en_en_emb)
         en_en_loss = self.mse(en_ko_emb, en_en_emb)
         loss = ko_en_loss + en_en_loss
 
+        loss_dict = {
+            "loss": loss,
+            "loss_ko": ko_en_loss,
+            "loss_en": en_en_loss,
+        }
+
+        return loss_dict
+
+    def training_step(self, batch, batch_idx):
+        loss = self.step(batch)
+
         self.log_dict(
             {
-                "train/loss": loss,
-                "train/loss_ko": ko_en_loss,
-                "train/loss_en": en_en_loss,
+                "train/loss": loss["loss"],
+                "train/loss_ko": loss["loss_ko"],
+                "train/loss_en": loss["loss_en"],
             },
             on_step=True,
             on_epoch=True,
         )
-        return loss
+        return loss["loss"]
 
     def validation_step(self, batch, batch_idx):
-        ko_batch, en_ko_batch, en_en_batch = batch
-
-        ko_emb = self.student.get_text_features(**ko_batch)
-        en_ko_emb = self.student.get_text_features(**en_ko_batch)
-        en_en_emb = self.teacher.get_text_features(**en_en_batch)
-
-        ko_en_loss = self.mse(ko_emb, en_en_emb)
-        en_en_loss = self.mse(en_ko_emb, en_en_emb)
-        loss = ko_en_loss + en_en_loss
+        loss = self.step(batch)
 
         self.log_dict(
-            {"val/loss": loss, "val/loss_ko": ko_en_loss, "val/loss_en": en_en_loss},
+            {
+                "val/loss": loss["loss"],
+                "val/loss_ko": loss["loss_ko"],
+                "val/loss_en": loss["loss_en"],
+            },
             on_epoch=True,
         )
-        return loss
+        return loss["loss"]
 
     def save(self, save_dir: str = "save/my_model"):
         self.student.save_pretrained(save_dir)
