@@ -42,13 +42,21 @@ def train(
         False, help="use auth token", rich_help_panel="model"
     ),
     model_type: ModelTypeEnum = Option(
-        "dual_encoder", "-m", "--model-type", help="model type", rich_help_panel="model"
+        "dual_encoder",
+        "-m",
+        "--model-type",
+        help="model type",
+        rich_help_panel="model",
+        case_sensitive=False,
     ),
     optimizer: str = Option(
         "adamw", "-o", "--optimizer", help="optimizer name", rich_help_panel="model"
     ),
     learning_rate: float = Option(
-        5e-4, "--lr", help="learning rate", rich_help_panel="model"
+        5e-4,
+        "--lr",
+        help="learning rate",
+        rich_help_panel="model",
     ),
     weight_decay: float = Option(
         1e-4, "-wd", "--weight-decay", help="weight decay", rich_help_panel="model"
@@ -100,6 +108,10 @@ def train(
         use_auth_token=use_auth_token,
     )
     logger.debug("loading model")
+
+    if isinstance(model_type, ModelTypeEnum):
+        model_type = model_type.value
+
     module = KoCLIPModule(
         teacher_model_name,
         student_model_name,
