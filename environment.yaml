@@ -1,19 +1,20 @@
 channels:
   - pytorch
+  - nvidia
   - conda-forge
   - defaults
 dependencies:
   - python=3.9
   - pip
 
-  - pytorch>=1.12.1
+  - pytorch>=1.13
+  - pytorch-cuda=11.7
   - torchvision
   - pytorch-lightning
   - transformers
   - datasets>=2.0.0
 
   - pandas
-  - scikit-learn
 
   - rich
   - typer
@@ -30,3 +31,4 @@ dependencies:
 
   - pip:
       - pytorch_optimizer
+      - bitsandbytes
