@@ -1,3 +1,4 @@
+import inspect
 from itertools import chain
 from typing import Literal
 
@@ -21,7 +22,7 @@ class KoCLIPModule(pl.LightningModule):
         self,
         teacher_model_name: str,
         student_model_name: str,
-        model_type: Literal["clip", "dual_encoder"] = "dual_encoder",
+        model_type: Literal["clip", "dual_encoder"] = "clip",
         optimizer: str = "adamw",
         learning_rate: float = 5e-4,
         weight_decay: float = 1e-4,
@@ -75,7 +76,7 @@ class KoCLIPModule(pl.LightningModule):
                 )
             )
 
-        no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
+        no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
             {
                 "params": [p for n, p in params if not any(nd in n for nd in no_decay)],
@@ -88,9 +89,18 @@ class KoCLIPModule(pl.LightningModule):
         ]
 
         opt_class = create_optimizer(self.optimizer)
+        signiture = inspect.signature(opt_class)
+        opt_kwargs = {}
+        if "capturable" in signiture.parameters:
+            opt_kwargs["capturable"] = True
+        if "weight_decouple" in signiture.parameters:
+            opt_kwargs["weight_decouple"] = True
+        if "decouple_decay" in signiture.parameters:
+            opt_kwargs["decouple_decay"] = True
+
         optimizer = opt_class(
             optimizer_grouped_parameters,
-            lr=5e-5,
+            lr=self.learning_rate,
         )
 
         if "bnb" in self.optimizer:

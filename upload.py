@@ -14,15 +14,12 @@ def upload(
     ),
     processor: bool = Option(True, help="upload processor too"),
     private: bool = Option(False, help="make the repository private"),
-    use_auth_token: bool = Option(False, help="use auth token"),
 ):
     model = AutoModel.from_pretrained(model_path)
-    model.push_to_hub(model_id, private=private, use_auth_token=use_auth_token)
+    model.push_to_hub(model_id, private=private, use_auth_token=private)
     if processor:
         model_processor = AutoProcessor.from_pretrained(model_path)
-        model_processor.push_to_hub(
-            model_id, private=private, use_auth_token=use_auth_token
-        )
+        model_processor.push_to_hub(model_id, private=private, use_auth_token=private)
 
 
 if __name__ == "__main__":

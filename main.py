@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from typing import Optional
 
@@ -42,7 +43,7 @@ def train(
         False, help="use auth token", rich_help_panel="model"
     ),
     model_type: ModelTypeEnum = Option(
-        "dual_encoder",
+        "clip",
         "-m",
         "--model-type",
         help="model type",
@@ -123,7 +124,7 @@ def train(
     )
 
     checkpoints = ModelCheckpoint(monitor="train/loss_epoch", save_last=True)
-    callbacks = [checkpoints, RichProgressBar(), LearningRateMonitor("step")]
+    callbacks = [checkpoints, RichProgressBar(), LearningRateMonitor()]
 
     if seed is not None:
         pl.seed_everything(seed)
@@ -134,20 +135,15 @@ def train(
         limit_train_batches *= accumulate_grad_batches
 
     if not wandb_name:
-        wandb_name = (
-            teacher_model_name.split("/")[-1]
-            + "-"
-            + student_model_name.split("/")[-1]
-            + "-"
-            + model_type
-        )
+        now = datetime.strftime(datetime.now(), "%Y%m%d_%H%M%S")
+        name = student_model_name.split("/")[-1]
+        wandb_name = f"{name}_{now}"
     logger.info(f"wandb name: {wandb_name}")
 
     logger.debug("set trainer")
     trainer = pl.Trainer(
         logger=WandbLogger(name=wandb_name, project="koclip"),
         fast_dev_run=fast_dev_run,
-        enable_progress_bar=True,
         accelerator="auto",
         precision=16 if "bnb" not in optimizer else 32,
         accumulate_grad_batches=accumulate_grad_batches,
