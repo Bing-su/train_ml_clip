@@ -101,6 +101,7 @@ class KoCLIPModule(pl.LightningModule):
         optimizer = opt_class(
             optimizer_grouped_parameters,
             lr=self.learning_rate,
+            **opt_kwargs,
         )
 
         if "bnb" in self.optimizer:
